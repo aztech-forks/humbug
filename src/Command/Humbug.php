@@ -58,7 +58,7 @@ class Humbug extends Command
          * Humbug is a single command app. We run secondary commands indirectly.
          * Currently self-update is the only one necessary.
          */
-        if ($input->getArgument('command') == 'self-update') {
+        if ($input->getArgument('subcommand') == 'self-update') {
             $command = $this->getApplication()->find('self-update');
             $noinput = new EmptyInput([]);
             return $command->run($noinput, $output);
@@ -476,9 +476,10 @@ class Humbug extends Command
                 10
             )
             ->addArgument(
-                'command',
+                'subcommand',
                 InputArgument::OPTIONAL,
-                'Run a secondary command, typically self-update!'
+                'Run a secondary command, typically self-update!',
+                null
             )
         ;
     }
@@ -502,14 +503,6 @@ class Humbug extends Command
                 . 'A number greater than zero is expected, and greater than maximum '
                 . 'test suite execution time under any given constraint option is '
                 . 'highly recommended.'
-            );
-        }
-        /**
-         * Check if self-update requested
-         */
-        if (!is_null($input->getArgument('command')) && $input->getArgument('command') !== 'self-update') {
-            throw new InvalidArgumentException(
-                'The only secondary command available is "self-update".'
             );
         }
     }
