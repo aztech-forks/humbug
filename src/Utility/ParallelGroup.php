@@ -10,14 +10,16 @@
 
 namespace Humbug\Utility;
 
+use Humbug\TestSuite\Mutant\Process;
+use \Symfony\Component\Process\Process as SfProcess;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 
 class ParallelGroup
 {
-
+    /**
+     * @var Process[]
+     */
     protected $processes = [];
-
-    protected $timeouts = [];
 
     public function __construct(array $processes)
     {
@@ -27,8 +29,16 @@ class ParallelGroup
     public function run()
     {
         foreach ($this->processes as $process) {
-            $process->getProcess()->start();
+            $process->getProcess()->start(function ($out, $data) use ($process) {
+                if ($out == SfProcess::ERR) {
+                    $process->markErrored();
+                }
+                else {
+                    $process->updateStatusFromOutput($data);
+                }
+            });
         }
+
         usleep(1000);
         while ($this->stillRunning()) {
             usleep(1000);

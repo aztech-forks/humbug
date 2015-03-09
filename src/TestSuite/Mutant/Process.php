@@ -17,6 +17,15 @@ use Symfony\Component\Process\PhpProcess;
 
 class Process
 {
+
+    const STATUS_OK = 0;
+
+    const STATUS_ERROR = 1;
+
+    const STATUS_TIMEOUT = 2;
+
+    const STATUS_FAILED = 3;
+
     /**
      * @var AdapterAbstract
      */
@@ -40,12 +49,12 @@ class Process
     /**
      * @var bool
      */
-    private $isTimeout = false;
+    private $resultProcessed = false;
 
     /**
-     * @var bool
+     * @var int
      */
-    private $resultProcessed = false;
+    private $status = 0;
 
     /**
      * @param AdapterAbstract $adapter
@@ -101,15 +110,9 @@ class Process
             throw new RuntimeException('Result has already been processed.');
         }
 
-        $status = Result::getStatusCode(
-            $this->adapter->ok($this->process->getOutput()),
-            $this->process->isSuccessful(),
-            $this->isTimeout
-        );
-
         $result = new Result(
             $this->mutant,
-            $status,
+            $this->getStatusCode(),
             $this->process->getOutput(),
             $this->process->getErrorOutput()
         );
@@ -121,11 +124,49 @@ class Process
         return $result;
     }
 
+    private function getStatusCode()
+    {
+        switch ($this->status) {
+            case self::STATUS_TIMEOUT:
+                return Result::TIMEOUT;
+            case self::STATUS_ERROR:
+                return Result::ERROR;
+            case self::STATUS_FAILED:
+                return Result::KILL;
+            case self::STATUS_OK:
+            default:
+                return Result::ESCAPE;
+        }
+    }
+
     /**
      * Marks the process as timed out;
      */
     public function markTimeout()
     {
-        $this->isTimeout = true;
+        $this->status = self::STATUS_TIMEOUT;
+    }
+
+    /**
+     * Marks the process as having an error.
+     */
+    public function markErrored()
+    {
+        $this->status = self::STATUS_ERROR;
+    }
+
+    /**
+     * Updates the process status from output
+     * @param string $data
+     */
+    public function updateStatusFromOutput($data)
+    {
+        if ($this->status != self::STATUS_OK) {
+            return;
+        }
+
+        if (! $this->adapter->ok($data)) {
+            $this->status = self::STATUS_FAILED;
+        }
     }
 }
